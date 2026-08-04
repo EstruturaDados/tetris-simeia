@@ -34,6 +34,24 @@
 // - Mantenha a fila sempre com 5 peças (repondo com gerarPeca()).
 
 
+// 🔄 Nível Mestre: Integração Estratégica entre Fila e Pilha
+//
+// - Implemente interações avançadas entre as estruturas:
+//      4 - Trocar a peça da frente da fila com o topo da pilha
+//      5 - Trocar os 3 primeiros da fila com as 3 peças da pilha
+// - Para a opção 4:
+//      Verifique se a fila não está vazia e a pilha tem ao menos 1 peça.
+//      Troque os elementos diretamente nos arrays.
+// - Para a opção 5:
+//      Verifique se a pilha tem exatamente 3 peças e a fila ao menos 3.
+//      Use a lógica de índice circular para acessar os primeiros da fila.
+// - Sempre valide as condições antes da troca e informe mensagens claras ao usuário.
+// - Use funções auxiliares, se quiser, para modularizar a lógica de troca.
+// - O menu deve ficar assim:
+//      4 - Trocar peça da frente com topo da pilha
+//      5 - Trocar 3 primeiros da fila com os 3 da pilha
+
+
 typedef struct {
     char tipo;
     int id;
@@ -103,6 +121,24 @@ void inserirNaFila(Peca fila[], int *tras, int *quantidade, Peca peca) {
     *quantidade = *quantidade + 1;
 }
 
+// tira uma peca do final da fila
+Peca removerDoFinal(Peca fila[], int *tras, int *quantidade) {
+    Peca p;
+
+    p = fila[*tras];
+    *tras = (*tras - 1 + TAM_FILA) % TAM_FILA;
+    *quantidade = *quantidade - 1;
+
+    return p;
+}
+
+// coloca uma peca no comeco da fila
+void inserirNoInicio(Peca fila[], int *frente, int *quantidade, Peca peca) {
+    *frente = (*frente - 1 + TAM_FILA) % TAM_FILA;
+    fila[*frente] = peca;
+    *quantidade = *quantidade + 1;
+}
+
 // a pilha comeca vazia
 void inicializarPilha(Pilha *pilha) {
     pilha->topo = -1;
@@ -164,6 +200,32 @@ void mostrarPilha(Pilha *pilha) {
     }
 }
 
+// troca a peca da frente da fila com a que esta no topo da pilha
+void trocarFrenteComTopo(Peca fila[], int frente, Pilha *pilha) {
+    Peca p;
+
+    p = fila[frente];
+    fila[frente] = pilha->itens[pilha->topo];
+    pilha->itens[pilha->topo] = p;
+}
+
+// inverte as 3 primeiras pecas da fila com as 3 da pilha
+void inverterFilaComPilha(Peca fila[], int frente, Pilha *pilha) {
+    Peca auxFila[3];
+    Peca auxPilha[3];
+    int i;
+
+    for (i = 0; i < 3; i++) {
+        auxFila[i] = fila[(frente + i) % TAM_FILA];
+        auxPilha[i] = pilha->itens[i];
+    }
+
+    for (i = 0; i < 3; i++) {
+        fila[(frente + i) % TAM_FILA] = auxPilha[2 - i];
+        pilha->itens[i] = auxFila[2 - i];
+    }
+}
+
 int main() {
     Peca fila[TAM_FILA];
     Pilha pilha;
@@ -173,12 +235,15 @@ int main() {
     int proximoId;
     int opcao;
     Peca p;
+    Peca ultimaPeca;
+    int ultimaJogada;
 
     srand((unsigned)time(NULL));
 
     // eu começo com a fila cheia para já deixar tudo pronto
     inicializarFila(fila, &frente, &tras, &quantidade, &proximoId);
     inicializarPilha(&pilha);
+    ultimaJogada = 0;
 
     do {
         // eu mostro a fila antes do menu para ficar mais fácil ver o que mudou
@@ -189,6 +254,9 @@ int main() {
         printf("1 - Jogar peça\n");
         printf("2 - Reservar peça\n");
         printf("3 - Usar peça reservada\n");
+        printf("4 - Trocar peça da frente com topo da pilha\n");
+        printf("5 - Desfazer última jogada\n");
+        printf("6 - Inverter fila com pilha\n");
         printf("0 - Sair\n");
         printf("Escolha: ");
         scanf("%d", &opcao);
@@ -196,6 +264,8 @@ int main() {
         if (opcao == 1) {
             // quando joga, sai a primeira peca da fila
             p = removerDaFila(fila, &frente, &quantidade);
+            ultimaPeca = p;
+            ultimaJogada = 1;
             printf("\nVocê jogou a peça %c com id %d.\n", p.tipo, p.id);
 
             // depois eu coloco outra no final para a fila continuar com 5
@@ -212,6 +282,7 @@ int main() {
                 proximoId = proximoId + 1;
 
                 push(&pilha, p);
+                ultimaJogada = 0;
                 printf("A peça foi colocada na pilha de reserva.\n");
             } else {
                 printf("\nA pilha esta cheia.\n");
@@ -219,9 +290,37 @@ int main() {
         } else if (opcao == 3) {
             if (pilhaVazia(&pilha) == 0) {
                 p = pop(&pilha);
+                ultimaJogada = 0;
                 printf("\nVocê usou a peça reservada %c com id %d.\n", p.tipo, p.id);
             } else {
                 printf("\nA pilha esta vazia.\n");
+            }
+        } else if (opcao == 4) {
+            if (pilhaVazia(&pilha) == 0) {
+                trocarFrenteComTopo(fila, frente, &pilha);
+                ultimaJogada = 0;
+                printf("\nA peça da frente foi trocada com a do topo da pilha.\n");
+            } else {
+                printf("\nA pilha esta vazia.\n");
+            }
+        } else if (opcao == 5) {
+            if (ultimaJogada == 1) {
+                p = removerDoFinal(fila, &tras, &quantidade);
+                inserirNoInicio(fila, &frente, &quantidade, ultimaPeca);
+                proximoId = proximoId - 1;
+                ultimaJogada = 0;
+                printf("\nA última jogada foi desfeita.\n");
+                printf("A peça %c com id %d voltou para o começo da fila.\n", ultimaPeca.tipo, ultimaPeca.id);
+            } else {
+                printf("\nNao tem jogada para desfazer.\n");
+            }
+        } else if (opcao == 6) {
+            if (pilhaVazia(&pilha) == 0 && pilha.topo == 2 && quantidade >= 3) {
+                inverterFilaComPilha(fila, frente, &pilha);
+                ultimaJogada = 0;
+                printf("\nA fila foi invertida com a pilha.\n");
+            } else {
+                printf("\nPrecisa ter 3 pecas na pilha e 3 na fila.\n");
             }
         } else if (opcao == 0) {
             printf("\nSaindo do jogo...\n");
@@ -235,20 +334,4 @@ int main() {
 }
 
 
-// 🔄 Nível Mestre: Integração Estratégica entre Fila e Pilha
-//
-// - Implemente interações avançadas entre as estruturas:
-//      4 - Trocar a peça da frente da fila com o topo da pilha
-//      5 - Trocar os 3 primeiros da fila com as 3 peças da pilha
-// - Para a opção 4:
-//      Verifique se a fila não está vazia e a pilha tem ao menos 1 peça.
-//      Troque os elementos diretamente nos arrays.
-// - Para a opção 5:
-//      Verifique se a pilha tem exatamente 3 peças e a fila ao menos 3.
-//      Use a lógica de índice circular para acessar os primeiros da fila.
-// - Sempre valide as condições antes da troca e informe mensagens claras ao usuário.
-// - Use funções auxiliares, se quiser, para modularizar a lógica de troca.
-// - O menu deve ficar assim:
-//      4 - Trocar peça da frente com topo da pilha
-//      5 - Trocar 3 primeiros da fila com os 3 da pilha
 
